@@ -3,6 +3,7 @@ package f1lesystem
 import java.io.{InputStream, Reader}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.nio.channels.FileChannel
 
 object LocalFileSystem {
   
@@ -50,95 +51,93 @@ class LocalFileSystem extends FileSystem {
     private[f1lesystem] def file = new java.io.File(fullpath)
   }
 
-  class LocalFile(override val parent: DIR, override val filename: String ) extends LocalPath with File {
+  class LocalFile(override val parent: DIR, override val filename: String ) extends File with LocalPath {
     import java.nio.charset._
 
-    override def readAsByteBuffer(): java.nio.ByteBuffer = {
-      val f = new java.io.RandomAccessFile(file, "r")
+    override def readAsByteBuffer[T](f: ByteBuffer => T): T = {
+      val raf = new java.io.RandomAccessFile(file, "r")
       try {
-        val size = f.length().toInt // WARNING: Does not support > 4GB files
-        val buf = ByteBuffer.allocate(size.toInt)
-        val c = f.getChannel
-        var pos = 0
-        while (pos < size) {
-          val n = c.read(buf)
-          if (n == -1) return buf
-          pos += n
+        // over 1MB, memory-map the file; otherwise wrap an FileInputStream
+        if (raf.length > 1024 * 1024) {
+          val buf = raf.getChannel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length)
+          f(buf)
+        } else {
+          val size = raf.length.toInt // WARNING: Does not support > 4GB files
+          val buf = ByteBuffer.allocate(size.toInt)
+          val c = raf.getChannel
+          var pos = 0
+          while (pos < size) {
+            val n = c.read(buf)
+            if (n == -1) pos = size
+            else pos += n
+          }
+          buf.position(0) // ready to be read
+          f(buf)
         }
-        buf.position(0) // ready to be read
-        buf
-      } finally {
-        f.close()
-      }
+      } finally raf.close()
     }
 
-    override def readAsInputStream(): java.io.InputStream = {
-      new java.io.FileInputStream(file)
+    override def readAsInputStream[T](f: InputStream => T): T = {
+      val fis = new java.io.FileInputStream(file)
+      try f(fis)
+      finally fis.close()
     }
 
-    override def readAsReader(): java.io.Reader = {
-      new java.io.BufferedReader(new java.io.FileReader(file))
-    }
-
-    override def readAsString(charSet: Charset = FileSystem.UTF8) = {
-      val buf = readAsByteBuffer()
-      charSet.newDecoder().decode(buf).toString
+    override def readAsReader[T](f: Reader => T): T = {
+      val reader = new java.io.BufferedReader(new java.io.FileReader(file))
+      try f(reader)
+      finally reader.close()
     }
 
     override def touch() {
       new java.io.FileOutputStream(file).close()
     }
 
-    override def write(reader: java.io.Reader): Unit = {
-      val buf = new Array[Char](256 * 1024)
+    override def write(reader: java.io.Reader, size: Long): Unit = {
       val writer = new java.io.FileWriter(file)
-      try {
-        while (true) {
-          val n = reader.read(buf)
-          if (n == -1) return
-          writer.write(buf, 0, n)
-        }
-      } finally {
-        writer.close()
-      }
+      try StreamUtils.copyReader(reader, writer, size)
+      finally writer.close()
     }
 
-    def write(stream: java.io.InputStream): Unit = {
-      val buf = new Array[Byte](256 * 1024)
+    override def write(stream: java.io.InputStream, size: Long): Unit = {
       val out = new java.io.FileOutputStream(file)
-      try {
-        while (true) {
-          val n = stream.read(buf)
-          if (n == -1) return
-          out.write(buf, 0, n)
-        }
-      } finally {
-        out.close()
-      }
+      try StreamUtils.copyStream(stream, out, size)
+      finally out.close()
     }
 
-    def write(str: String, charSet: Charset = FileSystem.UTF8): Unit = {
-      write(charSet.encode(str))
-    }
-
-    def write(data: java.nio.ByteBuffer): Unit = {
+    override def write(data: java.nio.ByteBuffer, size: Int): Unit = {
+      val buf = data.slice().limit(size).asInstanceOf[ByteBuffer]
       val f = new java.io.RandomAccessFile(file, "rw")
       try {
         f.setLength(0) // truncate if needed
         val c = f.getChannel
-        while (data.hasRemaining) {
-          c.write(data)
+        while (buf.hasRemaining) {
+          c.write(buf)
         }
       } finally {
         f.close()
+        data.position(data.position + size)
+      }
+      
+    }
+    
+    override def copyFile(file: String) {
+      val in = new java.io.FileInputStream(file)
+      val out = new java.io.FileOutputStream(this.file)
+      try StreamUtils.copyStream(in, out)
+      finally {
+        in.close()
+        out.close()
       }
     }
+    
+    override def size: Long = file.length
   }
 
   class LocalDir(
     override val parent: Option[DIR],
     override val filename: String
-  ) extends LocalPath with Dir {
+  ) extends Dir with LocalPath {
     override def listFiles: Seq[FILE] = {
       val files = file.listFiles
       if (files == null) return Seq.empty

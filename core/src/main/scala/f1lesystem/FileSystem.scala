@@ -3,6 +3,7 @@ package f1lesystem
 import java.io.{InputStream, Reader}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.io.InputStreamReader
 
 object FileSystem {
   val UTF8 = Charset.forName("UTF-8")
@@ -71,17 +72,39 @@ trait FileSystem {
   trait File extends Path {
     def parent: DIR
 
-    def touch(): Unit
+    def touch(): Unit = { write("", FileSystem.UTF8) }
 
-    def readAsByteBuffer(): ByteBuffer
-    def readAsInputStream(): InputStream
-    def readAsString(charSet: Charset = FileSystem.UTF8): String
-    def readAsReader(): Reader
+    def readAsInputStream[T](f: InputStream => T): T
+    
+    def readAsByteBuffer[T](f: ByteBuffer => T): T
+    
+    def readAsString(charSet: Charset = FileSystem.UTF8): String = {
+      readAsByteBuffer { buf => charSet.newDecoder().decode(buf).toString }
+    }
+    
+    def readAsReader[T](f: Reader => T): T = {
+      readAsInputStream { is => f(new InputStreamReader(is)) }
+    }
 
-    def write(data: ByteBuffer): Unit
-    def write(str: String, charSet: Charset = FileSystem.UTF8): Unit
-    def write(stream: InputStream): Unit
-    def write(reader: Reader): Unit
+    def write(data: ByteBuffer, size: Int): Unit = {
+      write(new ByteBufferInputStream(data), size)
+    }
+    
+    def write(str: String, charSet: Charset = FileSystem.UTF8): Unit = {
+      val encoded = charSet.encode(str)
+      write(encoded, encoded.limit)
+    }
+    
+    def write(stream: InputStream, size: Long): Unit = {
+      write(new InputStreamReader(stream), size)
+    }
+    
+    def write(reader: Reader, size: Long): Unit
+    
+    def copyFile(file: String): Unit
+    def copyFile(file: LocalFileSystem#LocalFile): Unit = { copyFile(file.fullpath) }
+    
+    def size: Long
 
     override def fullpath = parent.fullpath + "/" + filename
   }
