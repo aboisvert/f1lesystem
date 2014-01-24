@@ -22,7 +22,7 @@ class FileSystemTest extends WordSpec with OneInstancePerTest with ShouldMatcher
       fs.parseFile(foo.fullpath) should be === foo
     }
 
-    "return file basename and extesion" in {
+    "return file basename and extension" in {
       val foo = tmp / "foo"
       foo.basename should be === "foo"
       foo.parent should be === tmp
@@ -34,10 +34,37 @@ class FileSystemTest extends WordSpec with OneInstancePerTest with ShouldMatcher
       bar.extension should be === "ext"
 
       val tgz = tmp / "archive.tar.gz"
-      tgz.basename should be === "archive"
-      tgz.extension should be === "tar.gz"
+      tgz.basename should be === "archive.tar"
+      tgz.extension should be === "gz"
+      tgz.extensions should be === "tar.gz"
+
+      val foo2 = tmp / "foo2."
+      foo2.basename should be === "foo2"
+      foo2.extension should be === ""
+      foo2.extensions should be === ""
     }
 
+    "return sibling" in {
+      val foo = tmp / "foo"
+      val sibling = foo.sibling("bar")
+      sibling.parent should be === foo.parent
+      sibling.basename should be === "bar"
+    }
+
+    "return new extension" in {
+      (tmp / "foo").withExtension("gz").filename should be === "foo.gz"
+      (tmp / "foo.bar").withExtension("gz").filename should be === "foo.gz"
+      (tmp / "foo").withExtension("").filename should be === "foo."
+      (tmp / "foo.").withExtension("").filename should be === "foo."
+    }
+
+    "trim extensions" in {
+      (tmp / "foo").trimExtensions.filename should be === "foo"
+      (tmp / "foo.").trimExtensions.filename should be === "foo"
+      (tmp / "foo.bar").trimExtensions.filename should be === "foo"
+      (tmp / "foo.bar.baz").trimExtensions.filename should be === "foo"
+    }
+    
     "return empty directories and files for empty directory" in {
       tmp.listDirectories should be === Seq.empty
       tmp.listFiles should be === Seq.empty

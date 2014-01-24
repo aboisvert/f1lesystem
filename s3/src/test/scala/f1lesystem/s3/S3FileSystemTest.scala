@@ -8,22 +8,22 @@ import org.scalatest.BeforeAndAfterEach
 @org.junit.runner.RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterEach {
   val fs = new S3FileSystem {
-    def root: S3Dir = parseDirectory("bizo-dev:alex/f1lesystem/") 
+    def root: S3Dir = parseDirectory("bizo-dev:alex/f1lesystem/")
   }
-  
+
   val tmp = fs.root
 
   override def beforeEach() {
     tmp.deleteRecursively()
   }
-  
+
   "S3FileSystem" should {
-    
+
     "return fullpath" in {
       tmp should be === new fs.S3Dir("bizo-dev", "alex/f1lesystem/")
       tmp.fullpath should be === "s3://bizo-dev/alex/f1lesystem/"
     }
-    
+
     "parse directory" in {
       fs.parseDirectory(tmp.fullpath) should be === tmp
     }
@@ -45,8 +45,8 @@ class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterE
       bar.extension should be === "ext"
 
       val tgz = tmp / "archive.tar.gz"
-      tgz.basename should be === "archive"
-      tgz.extension should be === "tar.gz"
+      tgz.basename should be === "archive.tar"
+      tgz.extension should be === "gz"
     }
 
     "return empty directories and files for empty directory" in {
@@ -68,7 +68,7 @@ class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterE
 
       subFile.touch()
       subFile.exists should be === true
-      
+
       tmp.listFiles should be === Seq(tmp / "subFile")
     }
 
@@ -78,23 +78,23 @@ class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterE
 
       val subFile = tmp / "subFile"
       subFile.touch()
-      
+
       tmp.listFiles should be === Seq(tmp / "subFile")
       tmp.listDirectories should be === Seq.empty
 
       val subDir = tmp /+ "subDir"
       subDir.mkdir()
-      
+
       tmp.listFiles should be === Seq(tmp / "subFile")
       tmp.listDirectories should be === Seq(tmp /+ "subDir")
-      
-      
+
+
       (subDir / "subFile2").touch()
       (subDir / "subDir2").touch()
 
       tmp.listFiles should be === Seq(tmp / "subFile")
       tmp.listDirectories should be === Seq(tmp /+ "subDir")
-      
+
       subFile.delete()
       tmp.listFiles should be === Seq.empty
       tmp.listDirectories should be === Seq(tmp /+ "subDir")
@@ -103,7 +103,7 @@ class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterE
       tmp.listFiles should be === Seq.empty
       tmp.listDirectories should be === Seq.empty
     }
-    
+
     "delete directory" in {
       val subDir = tmp /+ "subDir"
       subDir.exists should be === false

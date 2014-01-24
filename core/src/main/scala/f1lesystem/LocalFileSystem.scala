@@ -6,13 +6,13 @@ import java.nio.charset.Charset
 import java.nio.channels.FileChannel
 
 object LocalFileSystem {
-  
+
   /** Utility trait for local testing */
   trait TempRoot {
     val rootName: String
-  
+
     val fs = new LocalFileSystem()
-  
+
     // create and return empty test directory under java.io.tmpdir
     lazy val root: fs.Dir = {
       val tmp = fs.parseDirectory(System.getProperty("java.io.tmpdir")) /+ rootName
@@ -22,7 +22,7 @@ object LocalFileSystem {
       tmp.mkdir()
       tmp
     }
-  }  
+  }
 }
 
 class LocalFileSystem extends FileSystem {
@@ -118,9 +118,9 @@ class LocalFileSystem extends FileSystem {
         f.close()
         data.position(data.position + size)
       }
-      
+
     }
-    
+
     override def copyFile(file: String) {
       val in = new java.io.FileInputStream(file)
       val out = new java.io.FileOutputStream(this.file)
@@ -130,7 +130,7 @@ class LocalFileSystem extends FileSystem {
         out.close()
       }
     }
-    
+
     override def size: Long = file.length
   }
 
@@ -138,6 +138,7 @@ class LocalFileSystem extends FileSystem {
     override val parent: Option[DIR],
     override val filename: String
   ) extends Dir with LocalPath {
+
     override def listFiles: Seq[FILE] = {
       val files = file.listFiles
       if (files == null) return Seq.empty

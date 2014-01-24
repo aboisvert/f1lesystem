@@ -28,7 +28,7 @@ object S3FileSystem {
 
 trait S3FileSystem extends FileSystem {
   import S3FileSystem._
-  
+
   type PATH = S3Path
   type FILE = S3File
   type DIR = S3Dir
@@ -36,17 +36,17 @@ trait S3FileSystem extends FileSystem {
   def s3: AmazonS3 = defaultS3Client
 
   class S3FileNotFoundException(bucket: String, key: String) extends java.io.FileNotFoundException(s"bucket $bucket key $key")
-  
+
   sealed trait S3Path extends Path {
     def bucket: String
     def key: String
-    
+
     override def filename: String = {
       val pos = key.lastIndexOf("/")
       if (pos == -1) key
       else key.substring(pos + 1)
     }
-    
+
     override def exists = {
       try {
         possibleFileNotFound {
@@ -57,9 +57,9 @@ trait S3FileSystem extends FileSystem {
     }
 
     override def delete() { s3.deleteObject(bucket, key) }
-    
+
     override def fullpath = s"s3://$bucket/$key"
-    
+
     def possibleFileNotFound[T](f: => T) = {
       try f
       catch { case e: AmazonS3Exception if e.getStatusCode == 404 =>
@@ -67,9 +67,9 @@ trait S3FileSystem extends FileSystem {
       }
     }
   }
-  
+
   case class S3File(bucket: String, key: String) extends File with S3Path {
-    
+
     override def readAsByteBuffer[T](f: ByteBuffer => T): T = readAsInputStreamAndSize { (is, size) =>
       val sizeInt = size.toInt
       val buf = ByteBuffer.allocate(sizeInt)
@@ -91,27 +91,27 @@ trait S3FileSystem extends FileSystem {
     }
 
     override def write(reader: java.io.Reader, size: Long): Unit = ???
-    
+
     override def write(stream: java.io.InputStream, size: Long): Unit = {
       val meta = new ObjectMetadata()
       meta.setContentLength(size)
       s3.putObject(bucket, key, stream, meta)
     }
-    
+
     def readAsInputStreamAndSize[T](f: (InputStream, Long) => T): T = {
       val obj = s3.getObject(bucket, key)
       val is = obj.getObjectContent
       try f(is, obj.getObjectMetadata.getContentLength)
       finally is.close()
     }
-    
+
     override def copyFile(file: String) {
       val fis = new FileInputStream(file)
       try {
         write(fis, new java.io.File(file).length)
       } finally fis.close()
     }
-    
+
     override def size = {
       val meta = s3.getObjectMetadata(bucket, key)
       if (meta == null) throw new S3FileNotFoundException(bucket, key)
@@ -123,7 +123,7 @@ trait S3FileSystem extends FileSystem {
       if (pos == -1) S3Dir(bucket, "")
       else S3Dir(bucket, key.substring(0, pos + 1))
     }
-    
+
   }
 
   case class S3Dir(bucket: String, key: String) extends Dir with S3Path {
@@ -134,10 +134,10 @@ trait S3FileSystem extends FileSystem {
       listFiles foreach { _.delete() }
       (this / "").delete()
     }
-    
+
     override def listDirectories: Seq[S3Dir] = {
       var result = ArrayBuffer[S3Dir]()
-      
+
       def append(listing: ObjectListing) {
         listing.getCommonPrefixes.asScala foreach { prefix =>
           if (prefix.endsWith("/")) {
@@ -145,12 +145,12 @@ trait S3FileSystem extends FileSystem {
           }
         }
       }
-      
+
       val req = new ListObjectsRequest()
         .withBucketName(bucket)
         .withPrefix(key)
         .withDelimiter("/")
-      
+
       var listing = s3.listObjects(req)
       append(listing)
       while (listing.isTruncated) {
@@ -159,10 +159,10 @@ trait S3FileSystem extends FileSystem {
       }
       result
     }
-    
+
     override def listFiles: Seq[S3File] = {
       var result = ArrayBuffer[S3File]()
-      
+
       def append(listing: ObjectListing) {
         listing.getObjectSummaries.asScala foreach { obj =>
           if (!obj.getKey.endsWith("/")) {
@@ -170,12 +170,12 @@ trait S3FileSystem extends FileSystem {
           }
         }
       }
-      
+
       val req = new ListObjectsRequest()
         .withBucketName(bucket)
         .withPrefix(key)
         .withDelimiter("/")
-      
+
       var listing = s3.listObjects(req)
       append(listing)
       while (listing.isTruncated) {
@@ -184,20 +184,20 @@ trait S3FileSystem extends FileSystem {
       }
       result
     }
-    
+
     override def mkdir(): Unit = { (this / "").touch() }
-    
+
     override def parent: Option[S3Dir] = {
       val pos = key.dropRight(1).lastIndexOf("/")
       if (pos == -1) None
       else Some(S3Dir(bucket, key.substring(0, pos)))
     }
-    
+
   }
-  
+
   val URLRegex = """s3://([^/]+)/(.*)""".r
   val LegacyRegex = """([^:]+):(.*)""".r
-    
+
   override def parseDirectory(path: String): S3Dir = {
     if (!path.endsWith("/")) throw new IllegalArgumentException("S3 directory must end with '/': " + path)
     val (bucket, key) = path match {
@@ -206,7 +206,7 @@ trait S3FileSystem extends FileSystem {
       case _ => throw new IllegalArgumentException("Invalid S3 URL: " + path)
     }
     S3Dir(bucket, key)
-  }   
+  }
   override def parseFile(path: String): S3File = {
     if (path.endsWith("/")) throw new IllegalArgumentException("S3 file should not end with '/': " + path)
     val (bucket, key) = path match {
@@ -216,5 +216,5 @@ trait S3FileSystem extends FileSystem {
     }
     S3File(bucket, key)
   }
-  
+
 }
