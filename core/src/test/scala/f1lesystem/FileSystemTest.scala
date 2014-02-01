@@ -6,11 +6,8 @@ import org.scalatest.matchers.ShouldMatchers
 
 @org.junit.runner.RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class FileSystemTest extends WordSpec with OneInstancePerTest with ShouldMatchers {
-  val tempRoot = new LocalFileSystem.TempRoot {
-    override val rootName = classOf[FileSystemTest].getClass.getSimpleName
-  }
-  val fs = tempRoot.fs
-  val tmp = tempRoot.root
+  val fs = LocalFileSystem
+  val tmp = LocalFileSystem.tempRoot(classOf[FileSystemTest].getClass.getSimpleName)
 
   "LocalFileSystem" should {
     "parse directory" in {

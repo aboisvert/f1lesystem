@@ -5,27 +5,18 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.channels.FileChannel
 
-object LocalFileSystem {
+object LocalFileSystem extends FileSystem {
 
   /** Utility trait for local testing */
-  trait TempRoot {
-    val rootName: String
-
-    val fs = new LocalFileSystem()
-
-    // create and return empty test directory under java.io.tmpdir
-    lazy val root: fs.Dir = {
-      val tmp = fs.parseDirectory(System.getProperty("java.io.tmpdir")) /+ rootName
-      if (tmp.exists) {
-        tmp.deleteRecursively()
-      }
-      tmp.mkdir()
-      tmp
+  def tempRoot(rootName: String): LocalDir = {
+    val tmp = parseDirectory(System.getProperty("java.io.tmpdir")) /+ rootName
+    if (tmp.exists) {
+      tmp.deleteRecursively()
     }
+    tmp.mkdir()
+    tmp
   }
-}
 
-class LocalFileSystem extends FileSystem {
   type PATH = LocalPath
   type FILE = LocalFile
   type DIR = LocalDir

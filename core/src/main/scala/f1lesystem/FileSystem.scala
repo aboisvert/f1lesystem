@@ -178,7 +178,7 @@ trait FileSystem {
     def write(reader: Reader, size: Long): Unit
 
     def copyFile(file: String): Unit
-    def copyFile(file: LocalFileSystem#LocalFile): Unit = { copyFile(file.fullpath) }
+    def copyFile(file: LocalFileSystem.LocalFile): Unit = { copyFile(file.fullpath) }
 
     def size: Long
 
