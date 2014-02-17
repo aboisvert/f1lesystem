@@ -1,6 +1,6 @@
 require 'buildr/scala'
 
-VERSION_NUMBER = "0.0.1-SNAPSHOT"
+VERSION_NUMBER = "0.0.1"
 
 Buildr.settings.build['scala.test'] = "org.scalatest:scalatest_#{Buildr::Scala.version_without_build}:jar:2.0.M5"
 
