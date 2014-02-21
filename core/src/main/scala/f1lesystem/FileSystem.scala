@@ -7,6 +7,16 @@ import java.io.InputStreamReader
 
 object FileSystem {
   val UTF8 = Charset.forName("UTF-8")
+
+  /** Copy contents of `source` file to `dest` file. */
+  def copy(source: FileSystem#File, dest: FileSystem#File) {
+    source.readAsInputStream { input => dest.write(input, source.size) }
+  }
+
+  /** Copy `source` file into `dest` directory, preserving source filename. */
+  def copy(source: FileSystem#File, dest: FileSystem#Dir) {
+    copy(source, dest / source.filename)
+  }
 }
 
 trait FileSystem {
