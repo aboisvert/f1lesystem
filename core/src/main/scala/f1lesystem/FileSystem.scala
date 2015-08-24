@@ -168,8 +168,23 @@ trait FileSystem {
       readAsByteBuffer { buf => charSet.newDecoder().decode(buf).toString }
     }
 
+    def readAsByteArray(): Array[Byte] = {
+      readAsByteBuffer { buf =>
+        if (buf.hasArray) buf.array
+        else {
+          val bytes = new Array[Byte](buf.remaining)
+          buf.get(bytes)
+          bytes
+        }
+      }
+    }
+
     def readAsReader[T](f: Reader => T): T = {
       readAsInputStream { is => f(new InputStreamReader(is)) }
+    }
+
+    def write(data: Array[Byte]): Unit = {
+      write(ByteBuffer.wrap(data), data.length)
     }
 
     def write(data: ByteBuffer, size: Int): Unit = {

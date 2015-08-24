@@ -194,5 +194,12 @@ class S3FileSystemTest extends WordSpec with ShouldMatchers with BeforeAndAfterE
       foo.write("foo")
       foo.readAsString() should be === "foo"
     }
+
+    "read and write to a file using byte array" in {
+      val foo = tmp / "foo2"
+      foo.write(Array[Byte](1, 2, 3, 4, 5, 42))
+      foo.readAsByteArray().toSeq should be === Seq[Byte](1, 2, 3, 4, 5, 42)
+    }
+
   }
 }

@@ -127,6 +127,7 @@ trait S3FileSystem extends FileSystem {
   }
 
   case class S3Dir(bucket: String, key: String) extends Dir with S3Path {
+    if (!key.endsWith("/")) throw new IllegalArgumentException("S3 directory must end with '/': " + path)
     override def /(filename: String) = S3File(bucket, key + filename)
     override def /+(filename: String) = S3Dir(bucket, key + filename + "/")
     override def deleteRecursively() {
