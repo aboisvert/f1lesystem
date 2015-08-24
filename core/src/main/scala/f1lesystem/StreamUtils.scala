@@ -78,22 +78,23 @@ object StreamUtils {
 }
 
 class ByteBufferInputStream(val buf: ByteBuffer) extends InputStream {
-  override def read(): Int = synchronized {
+  override def read(): Int = {
     if (!buf.hasRemaining) return -1
-    buf.get
+    buf.get & 0xFF
   }
-  override def read(bytes: Array[Byte], off: Int, len: Int) = synchronized {
+  override def read(bytes: Array[Byte], off: Int, len: Int): Int = {
+    if (!buf.hasRemaining) return -1
     val read = math.min(len, buf.remaining)
-    buf.get(bytes, off, len)
+    buf.get(bytes, off, read)
     read
   }
 }
 
 class ByteBufferOutputStream(val buf: ByteBuffer) extends OutputStream {
-  override def write(b: Int) = synchronized {
+  override def write(b: Int) = {
     buf.put(b.asInstanceOf[Byte])
   }
-  override def write(bytes: Array[Byte], off: Int, len: Int) = synchronized {
+  override def write(bytes: Array[Byte], off: Int, len: Int) = {
     buf.put(bytes, off, len)
   }
 }
