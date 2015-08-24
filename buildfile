@@ -1,6 +1,6 @@
 require 'buildr/scala'
 
-VERSION_NUMBER = "0.0.2-SNAPSHOT"
+VERSION_NUMBER = "0.0.2"
 
 Buildr.settings.build['scala.test'] = "org.scalatest:scalatest_#{Buildr::Scala.version_without_build}:jar:2.0.M5"
 
@@ -27,8 +27,10 @@ define "f1lesystem" do
   project.version = VERSION_NUMBER
   project.group = "org.alexboisvert"
 
+  scala_suffix = "_2.10"
+  
   define "core" do
-    package(:jar)
+    package(:jar, :id => id + scala_suffix)
   end
 
   define "s3" do
@@ -40,6 +42,6 @@ define "f1lesystem" do
     test.using :scalatest
     test.with LOG4J, SLF4J
 
-    package(:jar)
+    package(:jar, :id => id + scala_suffix)
   end
 end
